@@ -14,7 +14,7 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Validate app and infrastructure without AWS credentials
         run: cargo make check
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: static-site
           path: ui/dist/
