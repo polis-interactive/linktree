@@ -2,17 +2,13 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { App } from 'aws-cdk-lib';
 import { Template, Match } from 'aws-cdk-lib/assertions';
 import { basicAuthCode } from '../lib/basic-auth';
 import { SiteStack } from '../lib/site-stack';
 import { GithubStack } from '../lib/github-stack';
+import { bootstrap, project } from '../lib/project-config';
 
-const sitePath = mkdtempSync(join(tmpdir(), 'polis-site-test-'));
-writeFileSync(join(sitePath, 'index.html'), 'Hello, Polis.');
 const env = { account: '111111111111', region: 'us-east-1' };
 
 for (const stage of ['beta', 'prod'] as const) {
@@ -21,7 +17,6 @@ for (const stage of ['beta', 'prod'] as const) {
       new SiteStack(new App(), `Test-${stage}`, {
         env,
         stage,
-        sitePath,
         hostedZoneId: 'ZEXAMPLE',
         betaUsername: 'tester',
         betaPassword: 'test-password',
@@ -51,7 +46,25 @@ for (const stage of ['beta', 'prod'] as const) {
         ]),
       },
     });
-    template.resourceCountIs('AWS::CloudFront::OriginAccessControl', 1);
+    const bucket = Object.values(template.findResources('AWS::S3::Bucket'))[0];
+    assert.equal(bucket.DeletionPolicy, stage === 'beta' ? 'Delete' : 'Retain');
+    template.resourceCountIs('AWS::CloudFront::OriginAccessControl', 0);
+    template.resourceCountIs('AWS::IAM::Role', 0);
+    template.resourceCountIs('AWS::Lambda::Function', 0);
+    template.hasResourceProperties('AWS::S3::Bucket', {
+      BucketName: `polis-linktree-${stage}-${env.account}`,
+    });
+    template.hasResourceProperties('AWS::CloudFront::Distribution', {
+      DistributionConfig: {
+        Origins: Match.arrayWith([
+          Match.objectLike({
+            OriginAccessControlId: {
+              'Fn::ImportValue': `PolisLinktree-${stage}-OriginAccessControlId`,
+            },
+          }),
+        ]),
+      },
+    });
     template.hasResourceProperties('AWS::CloudFront::Distribution', {
       DistributionConfig: {
         Aliases: [
@@ -107,11 +120,13 @@ test('beta auth denies missing/wrong credentials and strips valid credentials be
   assert.throws(() => basicAuthCode('user', ''));
 });
 
-test('OIDC trust is limited to the repository and named GitHub environments', () => {
+test('OIDC trust requires main for beta and the prod environment for production', () => {
   const template = Template.fromStack(
     new GithubStack(new App(), 'Permissions', {
       env,
-      repository: 'polis/linktree',
+      repository: project.repository,
+      oidcRepository: project.oidcRepository,
+      providerArn: project.githubProviderArn,
     }),
   );
   for (const stage of ['beta', 'prod']) {
@@ -123,12 +138,49 @@ test('OIDC trust is limited to the repository and named GitHub environments', ()
             Condition: {
               StringEquals: {
                 'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
-                'token.actions.githubusercontent.com:sub': `repo:polis/linktree:environment:${stage}`,
+                'token.actions.githubusercontent.com:sub':
+                  stage === 'beta'
+                    ? `repo:${project.oidcRepository}:ref:refs/heads/main`
+                    : `repo:${project.oidcRepository}:environment:prod`,
               },
             },
           }),
         ]),
       },
     });
+  }
+  template.resourceCountIs('AWS::IAM::OIDCProvider', 0);
+});
+
+test('each GitHub role can assume only its own deployment and publishing roles', () => {
+  const template = Template.fromStack(
+    new GithubStack(new App(), 'PermissionsScope', {
+      env,
+      repository: project.repository,
+      oidcRepository: project.oidcRepository,
+      providerArn: project.githubProviderArn,
+    }),
+  );
+  const policies = template.findResources('AWS::IAM::Policy');
+  assert.equal(Object.keys(policies).length, 2);
+  for (const [stage, { qualifier }] of Object.entries(bootstrap)) {
+    const policy = Object.entries(policies).find(([id]) =>
+      id.startsWith(`${stage}DeployRole`),
+    )?.[1];
+    assert.ok(policy);
+    const statements = policy.Properties.PolicyDocument.Statement;
+    const assume = statements.find(
+      (s: { Action: string }) => s.Action === 'sts:AssumeRole',
+    );
+    assert.ok(assume);
+    assert.equal(assume.Resource.length, 2);
+    const serialized = JSON.stringify(statements);
+    assert.ok(serialized.includes(`cdk-${qualifier}-deploy-role-`));
+    assert.ok(serialized.includes(`cdk-${qualifier}-file-publishing-role-`));
+    assert.ok(!serialized.includes('hnb659fds'));
+    assert.ok(!serialized.includes('lookup-role'));
+    const other =
+      stage === 'beta' ? bootstrap.prod.qualifier : bootstrap.beta.qualifier;
+    assert.ok(!serialized.includes(other));
   }
 });

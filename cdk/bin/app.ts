@@ -1,7 +1,8 @@
 import * as cdk from 'aws-cdk-lib';
-import * as path from 'node:path';
 import { SiteStack } from '../lib/site-stack';
 import { GithubStack } from '../lib/github-stack';
+import { bootstrap, project, SiteStage } from '../lib/project-config';
+import { BootstrapStack } from '../lib/bootstrap-stack';
 
 const app = new cdk.App();
 const preview = app.node.tryGetContext('preview') === 'true';
@@ -17,21 +18,43 @@ function required(name: string, sample: string): string {
   return value || sample;
 }
 const env = {
-  account: required('CDK_DEFAULT_ACCOUNT', '111111111111'),
-  region: 'us-east-1',
+  account: preview ? '111111111111' : project.account,
+  region: project.region,
 };
+if (
+  !preview &&
+  process.env.CDK_DEFAULT_ACCOUNT &&
+  process.env.CDK_DEFAULT_ACCOUNT !== project.account
+)
+  throw new Error('AWS account does not match cdk/lib/project-config.ts');
 if (stage === 'permissions') {
-  new GithubStack(app, 'PolisLinktreePermissions', {
+  const permissions = new GithubStack(app, 'PolisLinktreePermissions', {
     env,
-    repository: required('GITHUB_REPOSITORY', 'example/linktree'),
-    providerArn: process.env.GITHUB_OIDC_PROVIDER_ARN,
+    repository: project.repository,
+    oidcRepository: project.oidcRepository,
+    providerArn: preview
+      ? `arn:aws:iam::${env.account}:oidc-provider/token.actions.githubusercontent.com`
+      : project.githubProviderArn,
   });
+  for (const siteStage of ['beta', 'prod'] as SiteStage[]) {
+    const resources = new BootstrapStack(app, bootstrap[siteStage].stackName, {
+      env,
+      stage: siteStage,
+      hostedZoneId: preview ? 'Z000000000000EXAMPLE' : project.hostedZoneId,
+      terminationProtection: true,
+    });
+    permissions.addStackDependency(resources);
+  }
 } else {
   new SiteStack(app, `PolisLinktree-${stage}`, {
     env,
-    stage: stage as 'beta' | 'prod',
-    hostedZoneId: required('HOSTED_ZONE_ID', 'Z000000000000EXAMPLE'),
-    sitePath: path.resolve(__dirname, '../../ui/dist'),
+    stage: stage as SiteStage,
+    synthesizer: new cdk.DefaultStackSynthesizer({
+      qualifier: bootstrap[stage as SiteStage].qualifier,
+      // Reuse the stage deploy role for lookups; never assume the shared bootstrap.
+      lookupRoleArn: `arn:aws:iam::${env.account}:role/cdk-${bootstrap[stage as SiteStage].qualifier}-deploy-role-${env.account}-${env.region}`,
+    }),
+    hostedZoneId: preview ? 'Z000000000000EXAMPLE' : project.hostedZoneId,
     betaUsername:
       stage === 'beta'
         ? required('BETA_BASIC_AUTH_USERNAME', 'preview')

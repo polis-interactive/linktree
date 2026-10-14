@@ -28,10 +28,14 @@ Run commands from the repository root. Node/npm and cargo-make are prerequisites
 | `cargo make build` | Release HTML, JS, CSS, and WASM in `ui/dist/` |
 | `cargo make check` | Rust formatting/Clippy, TypeScript, security behavior tests, offline synthesis |
 | `cargo make infra-synth` | Beta/prod CloudFormation previews; no AWS credentials needed |
-| `cargo make permissions-synth` | Offline GitHub OIDC permissions preview |
+| `cargo make permissions-synth` | Offline bootstrap and GitHub OIDC permissions preview |
 | `cargo make infra-diff` | Real AWS diff; requires `DEPLOY_STAGE=beta` or `prod` and environment configuration |
 | `cargo make deploy-beta` / `deploy-prod` | Build, synthesize, diff, and deploy selected environment |
 | `cargo make bootstrap` / `permissions-deploy` | One-time human-operated AWS setup |
+| `cargo make beta-state` | Read the saved beta on/off setting |
+| `cargo make destroy-beta` | Delete the disabled beta site, including all object versions |
+| `cargo make permissions-verify` | Validate live IAM policies and simulate console reads/write isolation |
+| `cargo make bootstrap-plan` | Synthesize and diff all setup stacks without changing AWS |
 
 Infrastructure dependencies can be installed independently with `cargo make infra-install`.
 Use `cargo make infra-check` and `cargo make infra-test` while working only on CDK.
@@ -47,6 +51,10 @@ Use `cargo make fmt` for Rust formatting and `cargo make infra-fmt` for infrastr
 | `Makefile.toml` | Shared local/CI commands; implementation scripts live with their component |
 | `docs/` | Architecture, AWS setup, downloaded agent references |
 | `.agents/skills/` | Repository-local AWS CDK and Dioxus skills |
+
+Beta is optional: **Actions → Beta → Run workflow → Enable beta** saves the setting
+and deploys immediately. Uncheck it to delete the beta site. Pushes to `main` follow
+the saved setting. Beta starts off and needs no GitHub Environment.
 
 Read [architecture](docs/architecture.md) for deployment boundaries and
 [deployment setup](docs/deployment.md) before the first AWS deployment.

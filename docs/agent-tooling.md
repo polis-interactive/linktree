@@ -5,13 +5,16 @@
 The official `aws-cdk` skill is installed into `.agents/skills/aws-cdk` from
 [`aws/agent-toolkit-for-aws`](https://github.com/aws/agent-toolkit-for-aws/tree/fea6667159ecf09a75310e5f70c1d76908d8abab/skills/core-skills/aws-cdk),
 revision `fea6667159ecf09a75310e5f70c1d76908d8abab`. It includes the upstream references.
-It is available for discovery on the next turn.
+It is available for discovery in this repository.
 
 The full [requested setup guide](https://raw.githubusercontent.com/aws/agent-toolkit-for-aws/refs/heads/main/setup-instructions/setup.md)
 is downloaded at [agent-references/aws-toolkit-setup.md](agent-references/aws-toolkit-setup.md).
-**AWS CLI login, managed MCP connection, and remote toolkit verification are pending**
-the choice/configuration of a human AWS identity. Installing the local CDK skill does
-not complete these authenticated steps. The local machine initially had uv but no AWS CLI.
+On 2026-10-14, AWS CLI 2.38.0 authentication was verified for the `default` profile
+in `us-east-1`, and the Agent Toolkit skill catalog was successfully queried.
+The user signed in as root for initial setup. A restricted non-root identity for
+ongoing local work remains to be provisioned; the managed MCP connection itself has
+not been verified. The separate beta/prod CDK bootstrap and GitHub OIDC roles were
+deployed on 2026-10-14, with account-wide read access and environment-scoped writes. The user's AWS installer also installed skills into `~/.agents/skills/`.
 
 The upstream guide uses browser-based `aws login`, followed by
 `aws configure agent-toolkit --yes --region us-east-1 --profile PROFILE`. Its login
@@ -32,7 +35,8 @@ The deployed documentation endpoint returned HTTP 403, so this uses the official
 versioned template alternative described in the release post.
 
 A small `dioxus` skill wrapper in `.agents/skills/dioxus` makes this downloaded reference
-discoverable in Codex. Both skills are repository-local; no global copies remain.
+discoverable in Codex. Both project skills are repository-local. Copies installed
+later in the user's home directory by the AWS installer are managed separately.
 The wrapper is project-authored; the enclosed reference is upstream Dioxus guidance.
 The repo pins Dioxus 0.7.10 and enables only web-related features; the prompt's fullstack
 examples do not imply adding a runtime backend to this project.
