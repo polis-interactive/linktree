@@ -22,11 +22,25 @@ The app checks that the CLI account matches the configured target account.
 
 ## AWS permissions setup
 
-All three setup stacks were deployed successfully on 2026-10-14. The site stacks
-have not been deployed. Both bootstrap stacks have termination protection enabled.
-Post-deployment verification passed: 148 IAM simulation decisions, zero Access
+All three setup stacks were deployed successfully on 2026-10-14. Both bootstrap
+stacks have termination protection enabled. The first beta site deployment failed
+on ACM certificate creation and CloudFront function tagging, leaving the site stack
+in `ROLLBACK_COMPLETE`. No site resources survived that rollback.
+
+The IAM correction was applied to all three setup stacks on 2026-10-14 using the
+privileged local AWS session, after the account owner explicitly approved its
+broader CloudFront initial-tagging authority. See the scope exception in
+[architecture](architecture.md#permissions). The post-update CDK diff is empty.
+Live verification passed all 160 IAM simulation decisions and reported zero Access
+Analyzer findings on deployed inline policies. Account-wide console reads remain
+allowed. These checks validate policies, not successful site provisioning.
+Retry the site through the Beta GitHub Actions pipeline; no site deployment was
+retried locally.
+
+Initial setup verification passed: 148 IAM simulation decisions, zero Access
 Analyzer findings on deployed inline policies, and zero CDK differences across all
-three stacks. `cargo make check` passed, including 16 infrastructure tests.
+three stacks. Those simulations supplied assumed tag context and did not establish
+that creation would work. `cargo make check` passed, including 16 infrastructure tests.
 
 `cargo make bootstrap-plan` synthesizes and shows a read-only diff of all three
 setup stacks. `cargo make bootstrap` (also `permissions-deploy`) deploys them:

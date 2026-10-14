@@ -65,42 +65,85 @@ export function siteWriteStatements(
       resources: ['*'],
       conditions: onCreate,
     }),
+    // CloudFront's resource schemas explicitly disable CloudFormation system
+    // tags. Distributions use our stage tag; the auth function has a fixed ARN.
     new iam.PolicyStatement({
-      sid: 'ManageTaggedCloudFrontResources',
+      sid: 'ManageStageDistributions',
       actions: [
         'cloudfront:UpdateDistribution',
         'cloudfront:DeleteDistribution',
-        'cloudfront:UpdateFunction',
-        'cloudfront:PublishFunction',
-        'cloudfront:DeleteFunction',
-        'cloudfront:TagResource',
-        'cloudfront:UntagResource',
       ],
-      resources: [
-        `arn:aws:cloudfront::${account}:distribution/*`,
-        `arn:aws:cloudfront::${account}:function/*`,
-      ],
-      conditions: tagged,
+      resources: [`arn:aws:cloudfront::${account}:distribution/*`],
+      conditions: { StringEquals: { [`aws:ResourceTag/${stageTag}`]: stage } },
     }),
     new iam.PolicyStatement({
-      sid: 'TagCloudFrontOnCreationOnly',
+      sid: 'TagNewStageDistributions',
+      // Creation also needs TagResource. This grant can label an existing
+      // distribution without a stage tag, granting subsequent management access.
+      // It is not a strict ownership boundary. The account owner explicitly
+      // approved this broader scope on 2026-10-14.
       actions: ['cloudfront:TagResource'],
-      resources: ['*'],
-      // AWS-reserved tags cannot be forged or changed by application identities.
+      resources: [`arn:aws:cloudfront::${account}:distribution/*`],
       conditions: {
-        StringEquals: {
-          'aws:RequestTag/aws:cloudformation:stack-name': `PolisLinktree-${stage}`,
-        },
+        StringEquals: { [`aws:RequestTag/${stageTag}`]: stage },
+        StringEqualsIfExists: { [`aws:ResourceTag/${stageTag}`]: stage },
       },
     }),
+    new iam.PolicyStatement({
+      sid: 'TagExistingStageDistributions',
+      actions: ['cloudfront:TagResource'],
+      resources: [`arn:aws:cloudfront::${account}:distribution/*`],
+      conditions: {
+        StringEquals: { [`aws:ResourceTag/${stageTag}`]: stage },
+        StringEqualsIfExists: { [`aws:RequestTag/${stageTag}`]: stage },
+      },
+    }),
+    new iam.PolicyStatement({
+      sid: 'RemoveNonOwnershipDistributionTags',
+      actions: ['cloudfront:UntagResource'],
+      resources: [`arn:aws:cloudfront::${account}:distribution/*`],
+      conditions: {
+        StringEquals: { [`aws:ResourceTag/${stageTag}`]: stage },
+        'ForAllValues:StringNotEquals': { 'aws:TagKeys': [stageTag] },
+        Null: { 'aws:TagKeys': 'false' },
+      },
+    }),
+    ...(stage === 'beta'
+      ? [
+          new iam.PolicyStatement({
+            sid: 'ManageOnlyBetaAuthFunction',
+            actions: [
+              'cloudfront:UpdateFunction',
+              'cloudfront:PublishFunction',
+              'cloudfront:DeleteFunction',
+              'cloudfront:TagResource',
+              'cloudfront:UntagResource',
+            ],
+            resources: [
+              `arn:aws:cloudfront::${account}:function/polis-linktree-beta-auth`,
+            ],
+          }),
+        ]
+      : []),
     new iam.PolicyStatement({
       sid: 'RequestOnlyThisDomainCertificate',
       actions: ['acm:RequestCertificate'],
       resources: ['*'],
+      // ACM authorization can precede the application of CloudFormation tags.
       conditions: {
-        ...onCreate,
         'ForAllValues:StringEquals': { 'acm:DomainNames': [domain] },
         Null: { 'acm:DomainNames': 'false' },
+      },
+    }),
+    new iam.PolicyStatement({
+      sid: 'TagNewSiteCertificates',
+      actions: ['acm:AddTagsToCertificate'],
+      resources: [`arn:aws:acm:${region}:${account}:certificate/*`],
+      conditions: {
+        StringEquals: { [`aws:RequestTag/${stageTag}`]: stage },
+        StringEqualsIfExists: {
+          'aws:ResourceTag/aws:cloudformation:stack-name': `PolisLinktree-${stage}`,
+        },
       },
     }),
     new iam.PolicyStatement({
@@ -173,7 +216,7 @@ export function publishStatements(
       resources: [`arn:aws:cloudfront::${account}:distribution/*`],
       conditions: {
         StringEquals: {
-          'aws:ResourceTag/aws:cloudformation:stack-name': `PolisLinktree-${stage}`,
+          [`aws:ResourceTag/${stageTag}`]: stage,
         },
       },
     }),
