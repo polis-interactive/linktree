@@ -1,5 +1,11 @@
 use dioxus::prelude::*;
 
+// Process the site CSS at build time and load it before the first content paint.
+const _: Asset = asset!(
+    "/assets/main.css",
+    AssetOptions::css().with_static_head(true)
+);
+
 fn main() {
     dioxus::launch(App);
 }
@@ -7,7 +13,6 @@ fn main() {
 #[component]
 fn App() -> Element {
     rsx! {
-        document::Stylesheet { href: asset!("/assets/main.css") }
         main {
             h1 { "Hello, Polis." }
             p { "Our new home for links is coming soon." }
