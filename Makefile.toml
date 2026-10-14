@@ -1,0 +1,129 @@
+[config]
+default_to_workspace = false
+skip_core_tasks = true
+
+[env]
+TELEMETRY = "false"
+# Let ui/rust-toolchain.toml select Rust after a task changes directories.
+RUSTUP_TOOLCHAIN = { unset = true }
+
+[tasks.default]
+alias = "help"
+
+[tasks.help]
+description = "Show project commands"
+script = '''
+echo 'setup | dev | build | check | fmt | infra-install | infra-check | infra-test'
+echo 'infra-synth | infra-diff | deploy-beta | deploy-prod | permissions-synth'
+echo 'bootstrap | permissions-deploy (human AWS bootstrap identity required)'
+'''
+
+[tasks.setup]
+description = "Install pinned Dioxus CLI, WASM target, and CDK dependencies"
+script = '''
+set -eu
+(cd ui && rustup target add wasm32-unknown-unknown)
+cargo install dioxus-cli --version 0.7.10 --locked
+npm ci --prefix cdk
+'''
+
+[tasks.dev]
+cwd = "ui"
+command = "dx"
+args = ["serve", "--platform", "web"]
+
+[tasks.build]
+cwd = "ui"
+description = "Build static HTML/JS/WASM into ui/dist/"
+script = '''
+set -eu
+dx build --platform web --release --locked
+node scripts/package-site.mjs
+'''
+
+[tasks.fmt]
+cwd = "ui"
+command = "cargo"
+args = ["fmt", "--all"]
+
+[tasks.rust-check]
+cwd = "ui"
+script = '''
+set -eu
+cargo fmt --all -- --check
+cargo clippy --locked --target wasm32-unknown-unknown -- -D warnings
+'''
+
+[tasks.infra-install]
+command = "npm"
+args = ["ci", "--prefix", "cdk"]
+
+[tasks.infra-check]
+command = "npm"
+args = ["--prefix", "cdk", "run", "check"]
+
+[tasks.infra-test]
+command = "npm"
+args = ["--prefix", "cdk", "test"]
+
+[tasks.infra-fmt]
+command = "npm"
+args = ["--prefix", "cdk", "run", "format"]
+
+[tasks.infra-synth]
+description = "Synthesize both environments offline using dummy auth; never deploy this assembly"
+dependencies = ["build"]
+script = '''
+set -eu
+cd cdk
+npm run cdk -- synth --quiet --strict -c preview=true -c stage=beta --output cdk.out.preview-beta
+npm run cdk -- synth --quiet --strict -c preview=true -c stage=prod --output cdk.out.preview-prod
+'''
+
+[tasks.permissions-synth]
+cwd = "cdk"
+command = "npm"
+args = ["run", "cdk", "--", "synth", "--quiet", "--strict", "-c", "stage=permissions", "-c", "preview=true", "--output", "cdk.out.preview-permissions"]
+
+[tasks.check]
+description = "Run the same checks as pull-request CI"
+dependencies = ["rust-check", "infra-check", "infra-test", "infra-synth", "permissions-synth"]
+
+[tasks.infra-diff]
+dependencies = ["build"]
+script = '''
+set -eu
+: "${DEPLOY_STAGE:?Set DEPLOY_STAGE to beta or prod}"
+case "$DEPLOY_STAGE" in beta|prod) ;; *) exit 1 ;; esac
+cd cdk
+npm run cdk -- diff -c "stage=$DEPLOY_STAGE"
+'''
+
+[tasks.deploy-beta]
+dependencies = ["build"]
+command = "bash"
+args = ["cdk/scripts/deploy.sh", "beta"]
+
+[tasks.deploy-prod]
+dependencies = ["build"]
+command = "bash"
+args = ["cdk/scripts/deploy.sh", "prod"]
+
+[tasks.bootstrap]
+description = "Bootstrap CDK with an explicitly chosen CloudFormation execution policy"
+script = '''
+set -eu
+: "${CDK_DEFAULT_ACCOUNT:?Set your AWS account ID}"
+: "${CDK_EXECUTION_POLICY_ARN:?Set an approved CloudFormation execution policy ARN}"
+cd cdk
+npm run cdk -- bootstrap "aws://$CDK_DEFAULT_ACCOUNT/us-east-1" --cloudformation-execution-policies "$CDK_EXECUTION_POLICY_ARN" --termination-protection
+'''
+
+[tasks.permissions-deploy]
+description = "One-time deployment of GitHub OIDC roles using a human identity"
+cwd = "cdk"
+script = '''
+set -eu
+npm run cdk -- diff -c stage=permissions
+npm run cdk -- deploy -c stage=permissions --require-approval broadening
+'''

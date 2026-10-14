@@ -1,0 +1,26 @@
+{
+  "name": "polis-linktree-infra",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "check": "tsc --noEmit && eslint bin lib test && prettier --check .",
+    "format": "prettier --write .",
+    "test": "node --import tsx --test test/*.test.ts",
+    "cdk": "cdk"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.273.0",
+    "constructs": "^10.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "aws-cdk": "2.1145.0",
+    "eslint": "^10.12.0",
+    "eslint-plugin-awscdk": "^4.4.3",
+    "prettier": "^3.9.10",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.71.2"
+  }
+}

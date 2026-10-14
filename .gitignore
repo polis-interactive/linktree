@@ -1,0 +1,9 @@
+/ui/target/
+/ui/dist/
+/cdk/node_modules/
+/cdk/cdk.out*/
+/.env
+/.env.*
+!/.env.example
+*.log
+.DS_Store

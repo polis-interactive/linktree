@@ -1,0 +1,21 @@
+name: CI
+on:
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Validate app and infrastructure without AWS credentials
+        run: cargo make check
+      - uses: actions/upload-artifact@v4
+        with:
+          name: static-site
+          path: ui/dist/
+          if-no-files-found: error

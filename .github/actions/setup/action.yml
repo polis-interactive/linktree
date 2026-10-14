@@ -1,0 +1,23 @@
+name: Set up project tools
+description: Install pinned Rust, Node, cargo-make, Dioxus CLI, and CDK dependencies
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version-file: cdk/.node-version
+        cache: npm
+        cache-dependency-path: cdk/package-lock.json
+    - uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: 1.99.0
+        targets: wasm32-unknown-unknown
+        components: rustfmt, clippy
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: ui -> target
+    - uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-make@0.37.24,dioxus-cli@0.7.10
+    - shell: bash
+      run: cargo make infra-install

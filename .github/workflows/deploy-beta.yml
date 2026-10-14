@@ -1,0 +1,32 @@
+name: Deploy beta
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: deploy-beta
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: beta
+      url: https://beta.linktree.polis.tv
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: cargo make check
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: linktree-beta-${{ github.run_id }}
+      - name: Deploy beta
+        run: cargo make deploy-beta
+        env:
+          CDK_DEFAULT_ACCOUNT: ${{ vars.AWS_ACCOUNT_ID }}
+          HOSTED_ZONE_ID: ${{ vars.HOSTED_ZONE_ID }}
+          BETA_BASIC_AUTH_USERNAME: ${{ secrets.BETA_BASIC_AUTH_USERNAME }}
+          BETA_BASIC_AUTH_PASSWORD: ${{ secrets.BETA_BASIC_AUTH_PASSWORD }}

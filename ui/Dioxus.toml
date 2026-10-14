@@ -1,0 +1,6 @@
+[application]
+name = "polis-linktree"
+default_platform = "web"
+
+[web.app]
+title = "Polis | Links"

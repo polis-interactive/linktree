@@ -1,0 +1,16 @@
+[package]
+name = "polis-linktree"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[dependencies]
+dioxus = { version = "=0.7.10", features = ["web"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+# Full stripping removes wasm-bindgen custom metadata on newer LLVM versions.
+strip = "debuginfo"
