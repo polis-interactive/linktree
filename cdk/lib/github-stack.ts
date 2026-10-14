@@ -1,9 +1,12 @@
 import * as cdk from 'aws-cdk-lib';
 import { aws_iam as iam } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+import { bootstrap, githubRoleName, SiteStage } from './project-config';
+import { betaControlStatements, publishStatements } from './policies';
 
 export interface GithubStackProps extends cdk.StackProps {
   readonly repository: string;
+  readonly oidcRepository: string;
   readonly providerArn?: string;
 }
 
@@ -23,28 +26,44 @@ export class GithubStack extends cdk.Stack {
           url: 'https://token.actions.githubusercontent.com',
           clientIds: ['sts.amazonaws.com'],
         });
-    for (const stage of ['beta', 'prod']) {
+    for (const stage of ['beta', 'prod'] as SiteStage[]) {
       const role = new iam.Role(this, `${stage}DeployRole`, {
+        roleName: githubRoleName(stage),
+        managedPolicies: [
+          iam.ManagedPolicy.fromAwsManagedPolicyName('ReadOnlyAccess'),
+        ],
         assumedBy: new iam.WebIdentityPrincipal(
           provider.openIdConnectProviderArn,
           {
             StringEquals: {
               'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
-              'token.actions.githubusercontent.com:sub': `repo:${props.repository}:environment:${stage}`,
+              'token.actions.githubusercontent.com:sub':
+                stage === 'beta'
+                  ? `repo:${props.oidcRepository}:ref:refs/heads/main`
+                  : `repo:${props.oidcRepository}:environment:prod`,
             },
           },
         ),
         maxSessionDuration: cdk.Duration.hours(1),
       });
+      for (const statement of publishStatements(stage, this.account))
+        role.addToPolicy(statement);
+      if (stage === 'beta') {
+        for (const statement of betaControlStatements(
+          this.account,
+          this.region,
+        ))
+          role.addToPolicy(statement);
+      }
       role.addToPolicy(
         new iam.PolicyStatement({
           actions: ['sts:AssumeRole'],
-          resources: ['deploy', 'file-publishing', 'lookup'].map((kind) =>
+          resources: ['deploy', 'file-publishing'].map((kind) =>
             this.formatArn({
               service: 'iam',
               region: '',
               resource: 'role',
-              resourceName: `cdk-hnb659fds-${kind}-role-${this.account}-${this.region}`,
+              resourceName: `cdk-${bootstrap[stage].qualifier}-${kind}-role-${this.account}-${this.region}`,
             }),
           ),
         }),

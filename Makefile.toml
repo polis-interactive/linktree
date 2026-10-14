@@ -14,8 +14,9 @@ alias = "help"
 description = "Show project commands"
 script = '''
 echo 'setup | dev | build | check | fmt | infra-install | infra-check | infra-test'
-echo 'infra-synth | infra-diff | deploy-beta | deploy-prod | permissions-synth'
-echo 'bootstrap | permissions-deploy (human AWS bootstrap identity required)'
+echo 'infra-synth | infra-diff | deploy-beta | deploy-prod | beta-state | destroy-beta'
+echo 'permissions-synth'
+echo 'bootstrap-plan | bootstrap | permissions-deploy | permissions-verify (AWS identity required)'
 '''
 
 [tasks.setup]
@@ -110,20 +111,34 @@ command = "bash"
 args = ["cdk/scripts/deploy.sh", "prod"]
 
 [tasks.bootstrap]
-description = "Bootstrap CDK with an explicitly chosen CloudFormation execution policy"
-script = '''
-set -eu
-: "${CDK_DEFAULT_ACCOUNT:?Set your AWS account ID}"
-: "${CDK_EXECUTION_POLICY_ARN:?Set an approved CloudFormation execution policy ARN}"
-cd cdk
-npm run cdk -- bootstrap "aws://$CDK_DEFAULT_ACCOUNT/us-east-1" --cloudformation-execution-policies "$CDK_EXECUTION_POLICY_ARN" --termination-protection
-'''
+description = "Deploy Linktree bootstrap and GitHub roles with scoped writes and account-wide reads"
+cwd = "cdk"
+command = "node"
+args = ["--import", "tsx", "scripts/bootstrap.ts"]
+
+[tasks.bootstrap-plan]
+description = "Synthesize and diff the bootstrap and GitHub roles without changing AWS"
+cwd = "cdk"
+command = "node"
+args = ["--import", "tsx", "scripts/bootstrap.ts", "--plan"]
 
 [tasks.permissions-deploy]
-description = "One-time deployment of GitHub OIDC roles using a human identity"
+alias = "bootstrap"
+
+[tasks.permissions-verify]
+description = "Validate deployed IAM policies and simulate console reads and environment write isolation"
 cwd = "cdk"
-script = '''
-set -eu
-npm run cdk -- diff -c stage=permissions
-npm run cdk -- deploy -c stage=permissions --require-approval broadening
-'''
+command = "node"
+args = ["--import", "tsx", "scripts/verify-permissions.ts"]
+
+[tasks.beta-state]
+description = "Read beta state; BETA_REQUEST=enable/disable saves the setting (workflow then applies it)"
+cwd = "cdk"
+command = "node"
+args = ["--import", "tsx", "scripts/beta.ts", "state"]
+
+[tasks.destroy-beta]
+description = "Delete the disabled beta site and every object version; leaves deployment bootstrap intact"
+cwd = "cdk"
+command = "node"
+args = ["--import", "tsx", "scripts/beta.ts", "destroy"]
