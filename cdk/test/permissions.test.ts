@@ -97,30 +97,41 @@ test('GitHub roles retain AWS console discovery access', () => {
   }
 });
 
-test('CloudFront and ACM write scope uses unforgeable CloudFormation ownership tags', () => {
+test('creation permissions match CloudFormation tagging capabilities', () => {
   const writes = siteWriteStatements(
     'beta',
     env.account,
     env.region,
     'ZEXAMPLE',
   ).map((s) => s.toStatementJson());
-  for (const sid of [
-    'ManageTaggedCloudFrontResources',
-    'ManageTaggedCertificates',
-  ]) {
-    const statement = writes.find((s) => s.Sid === sid);
-    assert.equal(
-      statement?.Condition.StringEquals[
-        'aws:ResourceTag/aws:cloudformation:stack-name'
-      ],
-      'PolisLinktree-beta',
-    );
-  }
-  const tag = writes.find((s) => s.Sid === 'TagCloudFrontOnCreationOnly');
-  assert.deepEqual(tag?.Condition, {
-    StringEquals: {
-      'aws:RequestTag/aws:cloudformation:stack-name': 'PolisLinktree-beta',
+  const certificate = writes.find(
+    (s) => s.Sid === 'RequestOnlyThisDomainCertificate',
+  );
+  assert.deepEqual(certificate?.Condition, {
+    'ForAllValues:StringEquals': {
+      'acm:DomainNames': ['beta.linktree.polis.tv'],
     },
+    Null: { 'acm:DomainNames': 'false' },
+  });
+  const functionPolicy = writes.find(
+    (s) => s.Sid === 'ManageOnlyBetaAuthFunction',
+  );
+  assert.equal(
+    functionPolicy?.Resource,
+    `arn:aws:cloudfront::${env.account}:function/polis-linktree-beta-auth`,
+  );
+  assert.equal(functionPolicy?.Condition, undefined);
+  const distribution = writes.find((s) => s.Sid === 'ManageStageDistributions');
+  assert.equal(
+    distribution?.Condition.StringEquals[
+      'aws:ResourceTag/polis:linktree-stage'
+    ],
+    'beta',
+  );
+  const tags = writes.find((s) => s.Sid === 'TagNewStageDistributions');
+  assert.deepEqual(tags?.Condition, {
+    StringEquals: { 'aws:RequestTag/polis:linktree-stage': 'beta' },
+    StringEqualsIfExists: { 'aws:ResourceTag/polis:linktree-stage': 'beta' },
   });
   const prod = siteWriteStatements(
     'prod',
@@ -128,6 +139,10 @@ test('CloudFront and ACM write scope uses unforgeable CloudFormation ownership t
     env.region,
     'ZEXAMPLE',
   ).map((s) => s.toStatementJson());
+  assert.equal(
+    prod.find((s) => s.Sid === 'ManageOnlyBetaAuthFunction'),
+    undefined,
+  );
   assert.equal(
     prod.find((s) => s.Sid === 'NeverChangeBetaDnsFromProd')?.Effect,
     'Deny',

@@ -224,31 +224,51 @@ for (const stage of ['beta', 'prod'] as const) {
     { 'iam:PassedToService': 'cloudformation.amazonaws.com' },
   );
   const distribution = `arn:aws:cloudfront::${project.account}:distribution/EXAMPLE`;
-  const ownership = 'aws:ResourceTag/aws:cloudformation:stack-name';
+  const ownership = `aws:ResourceTag/${stageTag}`;
   simulate(exec, ['cloudfront:UpdateDistribution'], distribution, 'allowed', {
-    [ownership]: `PolisLinktree-${stage}`,
+    [ownership]: stage,
   });
   simulate(exec, ['cloudfront:UpdateDistribution'], distribution, 'denied', {
-    [ownership]: `PolisLinktree-${other}`,
+    [ownership]: other,
   });
   simulate(exec, ['cloudfront:UpdateDistribution'], distribution, 'denied');
-  simulate(exec, ['cloudfront:TagResource'], distribution, 'denied', {
+  simulate(exec, ['cloudfront:TagResource'], distribution, 'allowed', {
     [`aws:RequestTag/${stageTag}`]: stage,
   });
+  simulate(exec, ['cloudfront:TagResource'], distribution, 'denied', {
+    [`aws:RequestTag/${stageTag}`]: stage,
+    [ownership]: other,
+  });
+  simulate(exec, ['cloudfront:TagResource'], distribution, 'denied', {
+    [`aws:RequestTag/${stageTag}`]: other,
+    [ownership]: stage,
+  });
+  simulate(exec, ['cloudfront:UntagResource'], distribution, 'denied', {
+    [ownership]: stage,
+    'aws:TagKeys': [stageTag],
+  });
+  simulate(exec, ['cloudfront:UntagResource'], distribution, 'allowed', {
+    [ownership]: stage,
+    'aws:TagKeys': ['Description'],
+  });
+  simulate(
+    exec,
+    ['cloudfront:TagResource', 'cloudfront:PublishFunction'],
+    `arn:aws:cloudfront::${project.account}:function/polis-linktree-beta-auth`,
+    stage === 'beta' ? 'allowed' : 'denied',
+  );
   simulate(github, ['cloudfront:CreateInvalidation'], distribution, 'allowed', {
-    [ownership]: `PolisLinktree-${stage}`,
+    [ownership]: stage,
   });
   simulate(github, ['cloudfront:CreateInvalidation'], distribution, 'denied', {
-    [ownership]: `PolisLinktree-${other}`,
+    [ownership]: other,
   });
   const domain =
     stage === 'beta' ? 'beta.linktree.polis.tv' : 'linktree.polis.tv';
   simulate(exec, ['acm:RequestCertificate'], '*', 'allowed', {
-    [`aws:RequestTag/${stageTag}`]: stage,
     'acm:DomainNames': [domain],
   });
   simulate(exec, ['acm:RequestCertificate'], '*', 'denied', {
-    [`aws:RequestTag/${stageTag}`]: stage,
     'acm:DomainNames': ['unrelated.polis.tv'],
   });
   for (const [record, expected] of [

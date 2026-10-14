@@ -97,7 +97,7 @@ See [AWS's ReadOnlyAccess policy](https://docs.aws.amazon.com/aws-managed-policy
 | GitHub role | Upload its site's objects, invalidate its distribution, assume its deploy/publishing roles; beta can also change its saved setting and delete its own site objects |
 | CDK deployment role | Operate only `PolisLinktree-beta` or `PolisLinktree-prod`; pass only that stage's execution role to CloudFormation |
 | CDK file-publishing role | Upload to its stage's CDK assets bucket |
-| CloudFormation execution role | Manage its named site bucket, stack-owned CloudFront/ACM resources, and site DNS records; no IAM or Lambda writes |
+| CloudFormation execution role | Manage its named site bucket, stage-tagged CloudFront distributions, fixed beta auth function, stack-owned ACM resources, and site DNS records; no IAM or Lambda writes; approved distribution tagging exception below |
 
 `PolisLinktreeBootstrap-beta` (`polisltb`) and `PolisLinktreeBootstrap-prod`
 (`polisltp`) are custom file-only bootstrap stacks. Each supplies the asset bucket,
@@ -108,10 +108,22 @@ The site imports that OAC. Docker publishing is not supported. The synth
 manifest requires bootstrap contract version 6 for deployment and 8 for lookups;
 these stacks advertise version 8. Revisit that contract before adding CDK features.
 
-Write scope uses exact bucket/stack ARNs and AWS-owned
-`aws:cloudformation:stack-name` tags for CloudFront/ACM. Application identities
-cannot forge or edit the reserved ownership tag. Creation requires stage tags;
-certificates are also restricted to the exact site domain. Route53 changes allow
+Write scope uses exact bucket/stack ARNs. ACM lifecycle writes use AWS-owned
+`aws:cloudformation:stack-name` tags; certificate requests are restricted to the
+exact site domain without requiring tags to already exist. CloudFront's resource
+schemas disable CloudFormation system tags, so distributions instead use
+`polis:linktree-stage`; the beta auth function uses its exact ARN.
+
+**Approved scope exception (2026-10-14):** creating a tagged distribution also requires
+`cloudfront:TagResource`. The initial-tagging grant can label any existing
+distribution in this account that lacks a Linktree stage tag, enabling subsequent
+management of that distribution. It cannot relabel a distribution assigned to the
+other stage, but it does not provide strict isolation from unrelated distributions.
+The account owner explicitly approved this broader scope after automatic approval
+review identified the risk.
+See [CreateDistributionWithTags permissions](https://docs.aws.amazon.com/cloudfront/latest/APIReference/API_CreateDistributionWithTags.html).
+
+Route53 changes allow
 only A/AAAA aliases and CNAME validation records for that domain. Production has
 an explicit deny for beta DNS names because IAM wildcard matching crosses labels.
 See [CloudFormation resource tags](https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-properties-resource-tags.html).
