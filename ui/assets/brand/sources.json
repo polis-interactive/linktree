@@ -1,0 +1,38 @@
+{
+  "retrieved": "2026-10-14",
+  "assets": {
+    "polis-logo.png": {
+      "url": "https://polis.tv/",
+      "origin": "Embedded desktop header PNG (227 \u00d7 60), decoded without modification",
+      "sha256": "f2c471a421a25a45fba1eb4722efed4ee90e51899f41aac358c55717a9ce9e5a"
+    },
+    "polis-icon.png": {
+      "url": "https://polis.tv/",
+      "origin": "Embedded mobile header PNG (60 \u00d7 60), decoded without modification",
+      "sha256": "b788848ac35becd3363002157232625ac19699bfacfface2aa61bca4aea80057"
+    },
+    "polis-favicon.ico": {
+      "url": "https://polis.tv/images/site/favicon.ico",
+      "sha256": "fe368744303ee90e9f44461aca3e2cc84613caf54dc08fda07d11e973faecbfc"
+    },
+    "waller-creek-high-fish.svg": {
+      "url": "https://de5gdetyjf1x9.cloudfront.net/variants/4e928353fa19d9d63f3f6748e5d652e3b619c781db879193f4c1b8520d7b61cf/images/fish-mark.svg",
+      "sha256": "a37e41a8947f868b4785b59e1319ce775dafca199fe1b46cfccc668b15660443"
+    },
+    "waller-creek-high-fish-detail.svg": {
+      "url": "https://de5gdetyjf1x9.cloudfront.net/variants/9e48978a08444d8660004cac2e5b0e823aa9598c1a2049978fb02012fc07e062/images/fish-detail-mark.svg",
+      "sha256": "5a3a9a8ea6572a6e770509256f62eed1ef01e9d12625d16f0ac85e9d8f8be110"
+    },
+    "waller-creek-high-icon.png": {
+      "url": "https://de5gdetyjf1x9.cloudfront.net/variants/a40dccf9ae11f66e05353d618a0aaadac7393cf253f978d61fc27f0d8f7c8cfb/images/icons/fish-192.png",
+      "sha256": "bbebbb8da6f0b2aff7736ab00e56e3f4294453402dfb5c551250002ff014963e"
+    }
+  },
+  "colors": {
+    "polis-teal": {
+      "hex": "#0BBAB7",
+      "url": "https://polis.tv/",
+      "origin": "--chakra-colors-polisPrimary in the inline theme CSS"
+    }
+  }
+}

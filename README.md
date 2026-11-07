@@ -1,6 +1,6 @@
 # Polis Linktree
 
-Rust/Dioxus hello-world frontend, AWS CDK infrastructure, and GitHub Actions deployment scaffold.
+Mobile-first Polis link page built with Rust/Dioxus, AWS CDK infrastructure, and GitHub Actions deployment.
 
 ## Run locally
 
@@ -14,8 +14,48 @@ cargo make dev
 ```
 
 Open the address printed by Dioxus (normally `http://localhost:8080`). The page displays
-“Hello, Polis.” and a link to `polis.tv`. First-time setup compiles the Dioxus CLI;
+the Polis logo, project cards, and social links. First-time setup compiles the Dioxus CLI;
 allow approximately 10–20 minutes depending on the machine. CI uses prebuilt tools.
+
+The dev server listens on all IPv4 interfaces (`0.0.0.0`). To preview on a phone,
+connect it to the same Wi-Fi as this computer and open `http://<computer-LAN-IP>:8080`
+(use the port printed by Dioxus if different). Restart `cargo make dev` after changing
+the server arguments. On Linux, `hostname -I` lists the computer's IP addresses.
+
+## Update links and socials
+
+Edit [`ui/content.toml`](ui/content.toml). The `links` and `socials` arrays control
+display order; copy or remove a block to add or remove an entry. Card `tagline` is
+optional and supports `/n`, `<br>`, or TOML's `\n` escape for line breaks; other
+HTML remains plain text. `name` provides the logo's accessible label. Logo and card icon filenames
+refer to `ui/assets/brand/`; social icon filenames refer to `ui/assets/social/`.
+Add new image files to those folders and reference their filenames in the TOML.
+Social SVGs should use opaque artwork on a transparent background; they render as
+CSS masks colored by `--ink` in `ui/assets/main.css`.
+
+Keep `cargo make dev` running while editing. The TOML is embedded with
+`include_str!`, which Dioxus 0.7.10 tracks through Rust dependency information.
+Saving it triggers an automatic rebuild and browser refresh, rather than the
+instant RSX-only hot reload. No extra watcher configuration is needed. CSS edits
+use Dioxus's asset hot reload. Production content updates need a new build/deploy.
+`cargo make check` validates the TOML schema, HTTPS links, and referenced image files.
+
+Run one `cargo make dev` instance per checkout: preview servers share the generated
+debug output directory, even when using different ports. If the preview references
+an older stylesheet, press `r` in the running Dioxus terminal to rebuild it, then
+refresh the browser. `cargo make build` updates release output, not the running
+development preview.
+
+Social artwork comes from [Simple Icons](https://github.com/simple-icons/simple-icons)
+under [CC0](https://github.com/simple-icons/simple-icons/blob/develop/LICENSE.md).
+Original brand asset sources are recorded in `ui/assets/brand/sources.json`.
+
+## TODO
+
+- Add a contact entry that opens an accessible modal, with Cloudflare Turnstile
+  bot detection like wallercreekhigh.com. Include server-side token verification
+  when implementing submission. This is planned only; no contact form or backend
+  is implemented.
 
 ## Commands
 
