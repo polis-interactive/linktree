@@ -1,6 +1,12 @@
 {
   "retrieved": "2026-10-14",
   "assets": {
+    "sarah-icon.png": {
+      "url": "https://flatgirl.net/",
+      "origin": "Flat Girl project images/raw/sarah-icon.png (380 × 380), copied without modification",
+      "retrieved": "2026-11-06",
+      "sha256": "cd0aa8986df4719bfc8fe24e30479280f807318f02d4cea41d74f31d17a297c6"
+    },
     "polis-logo.png": {
       "url": "https://polis.tv/",
       "origin": "Embedded desktop header PNG (227 \u00d7 60), decoded without modification",

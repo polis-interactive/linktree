@@ -37,11 +37,19 @@ export class GithubStack extends cdk.Stack {
           {
             StringEquals: {
               'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
-              'token.actions.githubusercontent.com:sub':
-                stage === 'beta'
-                  ? `repo:${props.oidcRepository}:ref:refs/heads/main`
-                  : `repo:${props.oidcRepository}:environment:prod`,
+              ...(stage === 'beta'
+                ? {
+                    'token.actions.githubusercontent.com:sub': `repo:${props.oidcRepository}:ref:refs/heads/main`,
+                  }
+                : {}),
             },
+            ...(stage === 'prod'
+              ? {
+                  StringLike: {
+                    'token.actions.githubusercontent.com:sub': `repo:${props.oidcRepository}:ref:refs/tags/*`,
+                  },
+                }
+              : {}),
           },
         ),
         maxSessionDuration: cdk.Duration.hours(1),

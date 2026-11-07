@@ -77,10 +77,16 @@ for (const stage of ['beta', 'prod'] as const) {
     .AssumeRolePolicyDocument.Statement;
   assert.equal(trust.length, 1);
   assert.equal(
-    trust[0].Condition.StringEquals['token.actions.githubusercontent.com:sub'],
+    trust[0].Condition.StringEquals['token.actions.githubusercontent.com:aud'],
+    'sts.amazonaws.com',
+  );
+  assert.equal(
+    trust[0].Condition[stage === 'beta' ? 'StringEquals' : 'StringLike'][
+      'token.actions.githubusercontent.com:sub'
+    ],
     stage === 'beta'
       ? `repo:${project.oidcRepository}:ref:refs/heads/main`
-      : `repo:${project.oidcRepository}:environment:prod`,
+      : `repo:${project.oidcRepository}:ref:refs/tags/*`,
   );
   simulate(
     github,

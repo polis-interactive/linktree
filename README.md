@@ -96,6 +96,11 @@ Beta is optional: **Actions → Beta → Run workflow → Enable beta** saves th
 and deploys immediately. Uncheck it to delete the beta site. Pushes to `main` follow
 the saved setting. Beta starts off and needs no GitHub Environment.
 
+Production deploys automatically when a non-prerelease GitHub release is published,
+including from a draft. It builds the release tag and needs no GitHub Environment or
+role-ARN variable. Apply the production tag trust policy as described in
+[deployment setup](docs/deployment.md#production-configuration) before the first release.
+
 Read [architecture](docs/architecture.md) for deployment boundaries and
 [deployment setup](docs/deployment.md) before the first AWS deployment.
 See [agent tooling](docs/agent-tooling.md) for installed skills and remaining authentication setup.

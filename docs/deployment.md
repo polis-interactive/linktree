@@ -1,8 +1,7 @@
 # First deployment
 
 AWS access and DNS ownership are verified. Beta uses a manual Actions checkbox and
-repository secrets; it does not need a GitHub Environment. Production still uses
-the `prod` GitHub Environment.
+repository secrets. Neither beta nor production needs a GitHub Environment.
 
 ## Verified account configuration
 
@@ -110,19 +109,29 @@ syntax warning while retaining its other workflow checks.
 
 ## Production configuration
 
-Create a GitHub environment named `prod` with variable `AWS_DEPLOY_ROLE_ARN` set to
-`arn:aws:iam::066540957026:role/PolisLinktree-prod-github`. Restrict deployments to your
-release tag pattern (for example `v*`) and configure reviewers if desired. Protect
-`main` with the `CI / check` required check.
+Production uses no GitHub Environment, Actions variable, or AWS access-key secret.
+The workflow directly references
+`arn:aws:iam::066540957026:role/PolisLinktree-prod-github`, matching beta's setup.
+Protect `main` with the `CI / check` required check and control who can create or
+change release tags and workflows.
 
 Beta's OIDC trust uses the exact repository and `refs/heads/main`. Production's trust
-uses the exact repository and `prod` environment. Both use GitHub's immutable
+uses the exact repository and tag refs (`refs/tags/*`). Both use GitHub's immutable
 owner/repository IDs, required by the default subject format for repositories created
 after July 15, 2026. See [GitHub's OIDC reference](https://docs.github.com/en/actions/reference/security/oidc).
 
-The production trigger is `release: created`. GitHub does not emit this workflow event
-for draft releases; create a non-draft, non-prerelease release directly. If your process
-starts with drafts, change the trigger to `published`. See
+Before the first release with this configuration, apply the AWS trust-policy change
+from `environment:prod` to tag refs using a privileged setup identity:
+`cargo make bootstrap-plan`, review the diff, then `cargo make bootstrap` and
+`cargo make permissions-verify`. Merging the workflow alone does not update the
+deployed IAM role; the old trust policy rejects jobs without the `prod` environment.
+These setup commands do not deploy the production site.
+
+Merge the workflow changes, then publish a non-prerelease GitHub release whose tag
+includes those changes. The `release: published` trigger supports releases published
+from drafts. Saving a draft or pushing a tag alone does not deploy production.
+The workflow checks, builds, and deploys the release tag to `https://linktree.polis.tv`.
+See
 [GitHub's release event documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#release).
 
 ## Local deployment and verification
@@ -132,7 +141,7 @@ shell for a beta deploy (never commit them). Run `cargo make deploy-beta` or `ca
 Each command builds the app, synthesizes, shows a diff, deploys infrastructure,
 uploads assets with `index.html` last, and requests a CloudFront invalidation. Old
 hashed assets remain available for open browser sessions. Local deployment currently
-requires a privileged identity; the bootstrap trusts only its GitHub environment role.
+requires a privileged identity; the bootstrap trusts only its stage's GitHub role.
 GitHub jobs deploy without an interactive prompt.
 
 After the first beta deployment, verify HTTP redirects to HTTPS, unauthenticated HTTPS

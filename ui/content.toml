@@ -5,7 +5,7 @@ name = "Polis Interactive"
 logo = "polis-logo.png"
 
 [[links]]
-title = "Portfolio"
+title = "Project Portfolio"
 url = "https://polis.tv"
 icon = "polis-icon.png"
 
@@ -14,6 +14,11 @@ title = "Waller Creek High"
 tagline = "GMO Free Fishlamps!"
 url = "https://wallercreekhigh.com"
 icon = "waller-creek-high-fish-detail.svg"
+
+[[links]]
+title = "Boring Flat Girl Plush Blanket"
+url = "https://flatgirl.net"
+icon = "sarah-icon.png"
 
 # Social icons are filenames inside assets/social/.
 [[socials]]
