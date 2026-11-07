@@ -31,7 +31,7 @@ npm ci --prefix cdk
 [tasks.dev]
 cwd = "ui"
 command = "dx"
-args = ["serve", "--platform", "web"]
+args = ["serve", "--platform", "web", "--addr", "0.0.0.0"]
 
 [tasks.build]
 cwd = "ui"
@@ -53,7 +53,14 @@ script = '''
 set -eu
 cargo fmt --all -- --check
 cargo clippy --locked --target wasm32-unknown-unknown -- -D warnings
+cargo test --locked
 '''
+
+[tasks.ui-resolve]
+cwd = "ui"
+description = "Resolve UI dependency changes and check WASM using locally cached packages"
+command = "cargo"
+args = ["check", "--offline", "--target", "wasm32-unknown-unknown"]
 
 [tasks.infra-install]
 command = "npm"

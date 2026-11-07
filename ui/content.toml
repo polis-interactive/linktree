@@ -1,0 +1,32 @@
+# Save this file while `cargo make dev` runs to rebuild and refresh the page.
+# Entries appear in this order. Add/remove a block to add/remove a link.
+name = "Polis Interactive"
+# Logo and link icons are filenames inside assets/brand/.
+logo = "polis-logo.png"
+
+[[links]]
+title = "Portfolio"
+url = "https://polis.tv"
+icon = "polis-icon.png"
+
+[[links]]
+title = "Waller Creek High"
+tagline = "GMO Free Fishlamps!"
+url = "https://wallercreekhigh.com"
+icon = "waller-creek-high-fish-detail.svg"
+
+# Social icons are filenames inside assets/social/.
+[[socials]]
+label = "Instagram"
+url = "https://www.instagram.com/polis_interactive/"
+icon = "instagram.svg"
+
+[[socials]]
+label = "TikTok"
+url = "https://www.tiktok.com/@polis_interactive"
+icon = "tiktok.svg"
+
+[[socials]]
+label = "Vimeo"
+url = "https://vimeo.com/user94925372"
+icon = "vimeo.svg"
