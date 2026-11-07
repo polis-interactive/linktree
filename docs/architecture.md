@@ -53,7 +53,7 @@ flowchart TD
     Toggle[Manual on/off workflow] --> State
     State -->|Yes| Beta[Validate + build + deploy beta]
     State -->|No| Remove[Delete beta site stack]
-    Release[Non-prerelease release created] --> Prod[Check out release tag + validate + build + deploy prod]
+    Release[Non-prerelease release published] --> Prod[Check out release tag + validate + build + deploy prod]
     Beta --> OIDC[GitHub OIDC deployment role]
     Prod --> OIDC
     OIDC --> CDK[CDK bootstrap roles / CloudFormation]
@@ -83,7 +83,11 @@ rollback are later work.
 `PolisLinktree-beta-github` and `PolisLinktree-prod-github`. Trust requires the exact
 repository (`polis-interactive/linktree`) with GitHub's immutable owner/repository IDs
 and STS audience. Beta additionally requires `refs/heads/main` and does not use a
-GitHub Environment. Production requires the `prod` environment and its tag restrictions.
+GitHub Environment. Production requires a tag ref (`refs/tags/*`) from that exact
+repository and also uses no GitHub Environment. The production workflow runs only
+when a non-prerelease release is published. IAM's tag condition does not distinguish
+release events from other workflows running on tags; control who can create or
+change tags and workflows in the repository.
 
 Every Linktree role has AWS-managed **ReadOnlyAccess** across the account. This is
 intentional: the AWS console can list and inspect resources, including S3 buckets

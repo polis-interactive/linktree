@@ -120,7 +120,7 @@ test('beta auth denies missing/wrong credentials and strips valid credentials be
   assert.throws(() => basicAuthCode('user', ''));
 });
 
-test('OIDC trust requires main for beta and the prod environment for production', () => {
+test('OIDC trust requires this repository main for beta and tags for production', () => {
   const template = Template.fromStack(
     new GithubStack(new App(), 'Permissions', {
       env,
@@ -130,20 +130,29 @@ test('OIDC trust requires main for beta and the prod environment for production'
     }),
   );
   for (const stage of ['beta', 'prod']) {
+    const condition =
+      stage === 'beta'
+        ? {
+            StringEquals: {
+              'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
+              'token.actions.githubusercontent.com:sub': `repo:${project.oidcRepository}:ref:refs/heads/main`,
+            },
+          }
+        : {
+            StringEquals: {
+              'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
+            },
+            StringLike: {
+              'token.actions.githubusercontent.com:sub': `repo:${project.oidcRepository}:ref:refs/tags/*`,
+            },
+          };
     template.hasResourceProperties('AWS::IAM::Role', {
+      RoleName: `PolisLinktree-${stage}-github`,
       AssumeRolePolicyDocument: {
-        Statement: Match.arrayWith([
+        Statement: Match.exact([
           Match.objectLike({
             Action: 'sts:AssumeRoleWithWebIdentity',
-            Condition: {
-              StringEquals: {
-                'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
-                'token.actions.githubusercontent.com:sub':
-                  stage === 'beta'
-                    ? `repo:${project.oidcRepository}:ref:refs/heads/main`
-                    : `repo:${project.oidcRepository}:environment:prod`,
-              },
-            },
+            Condition: Match.exact(condition),
           }),
         ]),
       },
